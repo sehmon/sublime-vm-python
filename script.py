@@ -1,7 +1,6 @@
 import os
 import time
 import requests
-import pyaudio
 import openai
 from elevenlabs import set_api_key, generate, play
 from dotenv import load_dotenv
@@ -48,6 +47,13 @@ class MyAPIProgram:
     return response.choices[0].text
 
   def call_elevenlabs_api(self, prompt):
+    # initialize response to be None 
+    response = None
+    try:
+      response = generate(prompt)
+    except requests.exceptions.HTTPError as err:
+      print("Error: {0}".format(err))
+
     return generate(prompt)
 
   def play_audio(self, audio):
