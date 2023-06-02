@@ -5,11 +5,10 @@ import requests
 import openai
 import concurrent.futures
 
-from datetime import datetime
-
 import numpy as np
 import sounddevice as sd
 import soundfile as sf
+from datetime import datetime
 from gtts import gTTS
 from io import BytesIO
 from pydub import AudioSegment
@@ -29,85 +28,34 @@ set_api_key(os.environ["ELEVEN_LABS_API_KEY"]) # ElevenLabs
 DATA_TYPE = constants.DATA_TYPE
 
 # Define global variables
-voicemail_pairs = constants.VOICEMAIL_PAIRS
-voicemail_prompt = None
 pool = concurrent.futures.ThreadPoolExecutor(max_workers=8) # Thread pool for playing audio on multiple sound devices
-
 
 
 class SublimeSpeaker:
   def run(self):
     # Testing out playing audio on multiple sound devices
-    while False:
-      devices = sd.query_devices()
-      usb_sound_card_indicies = []
+    while True:
+      output_streams = self.get_available_output_streams()
+      relationship_pair = random.choice(constants.VOICEMAIL_PAIRS)
+      voicemail_text = self.generate_voicemail(relationship_pair[0], relationship_pair[1])
 
-      for device in devices:
-        if (device['name'] == 'USB Audio Device') and (device['max_output_channels'] == 2):
-          usb_sound_card_indicies.append(device['index'])
-
-      streams = [self.create_running_output_stream(index) for index in usb_sound_card_indicies]
-
-      audio_data_1, sr1 = sf.read('./audio_recordings/test_wavs/birds.wav', dtype=DATA_TYPE, always_2d=True)
-      audio_data_2, sr2 = sf.read('./audio_recordings/test_wavs/Fanfare60.wav', dtype=DATA_TYPE, always_2d=True)
-      audio_data_3, sr3 = sf.read('./audio_recordings/test_wavs/BabyElephantWalk60.wav', dtype=DATA_TYPE, always_2d=True)
-      audio_data_4, sr4 = sf.read('./audio_recordings/test_wavs/PinkPanther30.wav', dtype=DATA_TYPE, always_2d=True)
-
-
-      pdb.set_trace()
-
-      pool.submit(self.play_sound_on_speaker, 0, streams, audio_data_1)
-      pool.submit(self.play_sound_on_speaker, 1, streams, audio_data_2)
-      pool.submit(self.play_sound_on_speaker, 2, streams, audio_data_3)
-      pool.submit(self.play_sound_on_speaker, 3, streams, audio_data_4)
-
-      time.sleep(40)
-
-
-    # Generation loop and audio playback
-    while True: 
-      devices = sd.query_devices()
-      usb_sound_card_indicies = []
-
-      for device in devices:
-        if (device['name'] == 'USB Audio Device') and (device['max_output_channels'] == 2):
-          usb_sound_card_indicies.append(device['index'])
-
-      streams = [self.create_running_output_stream(index) for index in usb_sound_card_indicies]
-
-      # Generate voicemail prompt
-      relationship_pair = random.choice(voicemail_pairs)
-      voicemail_prompt = "Generate a random voicemail a {} would leave for a {}. Give both characters a name:".format(
-        relationship_pair[0],
-        relationship_pair[1]
-        )
+      import pdb; pdb.set_trace()
       
-      filename = "voicemail_{}_{}_{}.mp3".format(
-        relationship_pair[0],
-        relationship_pair[1],
-        datetime.now().strftime("%Y%m%d_%H%M%S")
-        )
-
-      # Call to NYTimes API to get most popular articles
-      # res = self.call_nytimes_api()
-      # print(res)
-
-      # Call to OpenAI API to generate audio
-      print("Prompt to generate:")
-      print(voicemail_prompt)
-      prompt = self.call_openai_api(voicemail_prompt)
-      print("Response:")
-      print(prompt)
-
       # Generate audio, save, and play
-      audio = self.call_elevenlabs_api(prompt, voices)
-      self.save_audio(audio, filename)
+      audio = self.call_elevenlabs_api(voicemail_text, voices)
+
+      filename = "voicemail_{}_{}_{}.mp3".format(
+      relationship_pair[0],
+      relationship_pair[1],
+      datetime.now().strftime("%Y%m%d_%H%M%S")
+      )
+      # self.save_audio(audio, filename)
 
       # preamble_audio = self.generate_intro()
       # pool.submit(self.play_audio, preamble_audio)
       # stream = self.create_running_output_stream(0)
       # pool.submit(self.play_audio, filename)
-      self.play_audio(filename, streams)
+      # self.play_audio(filename, output_streams)
 
       # Sleep 😴
       n = 20
@@ -122,13 +70,57 @@ class SublimeSpeaker:
     :param index: the device index of the audio device to write to
     :return: a started sounddevice.OutputStream object ready to be written to
     """
- 
     output = sd.OutputStream(
         device=index,
         dtype=DATA_TYPE
     )
     output.start()
     return output
+
+
+  def get_available_output_streams(self):
+    """
+    Get a list of all available sound devices.
+    :return: a list of all available sound devices
+    """
+    usb_sound_card_indicies = []
+    devices = sd.query_devices()
+
+    # Raise error if no sound devices found
+    if len(devices) == 0:
+      raise Exception("No sound devices found.")
+
+    for device in devices:
+      if (device['name'] == 'USB Audio Device') and (device['max_output_channels'] == 2): # If the device is a USB sound card with 2 output channels
+        usb_sound_card_indicies.append(device['index'])
+    
+    # Raise error if no USB sound cards found
+    if len(usb_sound_card_indicies) == 0:
+      raise Exception("No USB sound cards found. Check you connections")
+
+    return [self.create_running_output_stream(index) for index in usb_sound_card_indicies]
+  
+
+  def generate_voicemail(self, relationship_pair_a, relationship_pair_b):
+    """
+    Generate a voicemail prompt based on a conversatio between relationship_pair_a and relationship_pair_b.
+    :param relationship_pair_a: the voicemail caller
+    :param relationship_pair_b: the voicemail recipient
+    :return: a string containing the final voicemail text
+    """
+    voicemail_prompt = "Generate a random voicemail a {} would leave for a {}. Give both characters a name:".format(
+      relationship_pair_a,
+      relationship_pair_b
+      )
+    
+    print("Prompt to generate:")
+    print(voicemail_prompt)
+    prompt_response = self.call_openai_api(voicemail_prompt)
+    
+    print("Response:")
+    print(prompt_response)
+    return prompt_response
+    
 
 
   def call_nytimes_api(self):
@@ -171,13 +163,11 @@ class SublimeSpeaker:
     print("Playing audio...")
     sound = AudioSegment.from_mp3('audio_recordings/{}'.format(filename))
     sound.export('audio_recordings/{}.wav'.format(filename.split('.')[0]), format="wav")
-    time.sleep(2)
     ad, sr = sf.read('audio_recordings/{}.wav'.format(filename.split('.')[0]), always_2d=True)
     self.play_sound_on_speaker(0, streams, ad)
 
 
   def play_sound_on_speaker(self, index, streams, audio):
-    pdb.set_trace()
     temp = audio
     if audio.shape[1] == 1:
       temp = np.insert(audio, 1, 0, axis=1)
