@@ -41,7 +41,7 @@ class SublimeSpeaker:
       voicemail_text = self.generate_voicemail(relationship_pair[0], relationship_pair[1])
       
       # Generate audio, save, and play
-      audio = self.call_elevenlabs_api(voicemail_text, self.voices)
+      audio = self.call_elevenlabs_api(voicemail_text, self.voices, relationship_pair[0])
 
       filename = "voicemail_{}_{}_{}.mp3".format(
       relationship_pair[0],
@@ -103,18 +103,30 @@ class SublimeSpeaker:
     return response.choices[0].text
 
 
-  def call_elevenlabs_api(self, prompt, voices):
+  def call_elevenlabs_api(self, prompt, voices, relationship_pair_a):
     """
-    Send a text string to the ElevenLabs API and return the response.
+    Send a text string to the ElevenLabs API and return the response. Pulls from the constants file for men/women voice filtering.
     :param prompt: the text to submit to the API
     :param voices: a list of possible voices to use for the response
     :return response: the audio data returned from the API
     """
-    print("Calling ElevenLabs API...")
-    print("Voice: {}".format(voices.voices))
-    v = random.choice(voices.voices)
-    response = None
+    import pdb;pdb.set_trace()
+    print("Calling ElevenLabs API with speaker: {}".format(relationship_pair_a))
+
+    voice_list = voices.voices
+    if (relationship_pair_a in constants.MEN_ROLES):
+      print("Generating men's voice for role: {}".format(relationship_pair_a))
+      men_voice_list = filter(lambda voices: (voices.name in constants.ELEVEN_LABS_MEN_NAMES), voice_list)
+      voice_list = list(men_voice_list)
+    elif (relationship_pair_a in constants.WOMEN_ROLES):
+      print("Generating women's voice for role: {}".format(relationship_pair_a))
+      women_voice_list = filter(lambda voices: (voices.name in constants.ELEVEN_LABS_WOMEN_NAMES), voice_list)
+      voice_list = list(women_voice_list)
+    else:
+      print("Generating random voice for role: {}".format(relationship_pair_a))
+
     try:
+      
       response = generate(text=prompt, voice=v)
     except requests.exceptions.HTTPError as err:
       print("Error: {0}".format(err))

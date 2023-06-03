@@ -90,4 +90,68 @@ VOICEMAIL_PAIRS = [
   ("food delivery driver", "resident")
 ]
 
+MEN_ROLES = [
+    "son",
+    "father",
+    "grandson",
+    "grandfather",
+    "nephew",
+    "uncle",
+    "brother",
+    "father",
+    "boyfriend",
+    "husband",
+    "boyfriend",
+    "husband",
+    "stepson",
+    "stepfather",
+    "half-brother",
+    "godson",
+    "godfather",
+    "best man",
+    "groom",
+    "groomsman",
+    "ex-husband",
+    "ex-boyfriend",
+]
+
+WOMEN_ROLES = [
+    "mother",
+    "daughter",
+    "grandmother",
+    "granddaughter",
+    "aunt",
+    "niece",
+    "sister",
+    "girlfriend",
+    "wife",
+    "stepmother",
+    "half-sister",
+    "godmother",
+    "maid of honor",
+    "bride",
+    "bridesmaid",
+    "bride",
+    "fiancée",
+    "ex-wife",
+    "ex-girlfriend",
+]
+
+ELEVEN_LABS_MEN_NAMES = [
+    'Antoni',
+    'Elli',
+    'Josh',
+    'Arnold',
+    'Adam',
+]
+
+ELEVEN_LABS_WOMEN_NAMES = [
+    'Rachel',
+    'Bella',
+    'Sam',
+    'Domi'
+    'grandmother-1',
+]
+
+
 DATA_TYPE="float32"
