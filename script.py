@@ -110,6 +110,7 @@ class SublimeSpeaker:
     :param voices: a list of possible voices to use for the response
     :return response: the audio data returned from the API
     """
+    import pdb;pdb.set_trace()
     print("Calling ElevenLabs API with speaker: {}".format(relationship_pair_a))
 
     voice_list = voices.voices
@@ -125,7 +126,7 @@ class SublimeSpeaker:
       print("Generating random voice for role: {}".format(relationship_pair_a))
 
     try:
-      
+      v = random.choice(voice_list)
       response = generate(text=prompt, voice=v)
     except requests.exceptions.HTTPError as err:
       print("Error: {0}".format(err))
