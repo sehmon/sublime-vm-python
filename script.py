@@ -27,7 +27,10 @@ set_api_key(os.environ["ELEVEN_LABS_API_KEY"]) # ElevenLabs
 # Define global variables and constants
 pool = concurrent.futures.ThreadPoolExecutor(max_workers=8) # Thread pool for playing audio on multiple sound devices
 DATA_TYPE = constants.DATA_TYPE
+LANGUAGES = constants.GENERATION_LANGUAGES
 SPEAKER_ENVIRONMENT = 'LAPTOP' # 'LAPTOP' | 'SCULPTURE'
+SIMULATE_MODE = True
+SKIP_AUDIO_GENERATION = False
 
 
 class SublimeSpeaker:
@@ -35,10 +38,48 @@ class SublimeSpeaker:
   def __init__(self):
     self.voices = voices()
 
+
+  def get_new_output_stream(self):
+    output_streams = None
+    if SPEAKER_ENVIRONMENT == 'LAPTOP':
+      output_streams = [self.create_running_output_stream(1)]
+    elif SPEAKER_ENVIRONMENT == 'SCULPTURE':
+      output_streams = self.get_available_output_streams()
+    return output_streams
+
+
+  def simulate(self):
+    """
+    Simulate the voicemail generation and playback process.
+    1. Get a list of all the voicemail tracks in the voicemail directory
+    2. Randomly select one of the tracks
+    3. Play the track
+    4. Wait 3 seconds
+    5. Repeat
+    """
+    while True:
+      # Get a list of all the voicemail tracks in the voicemail directory
+      voicemail_tracks = os.listdir('./audio_recordings')
+      # Filter the voicemail_tracks list to only include .mp3 files
+      voicemail_tracks = list(filter(lambda x: x.endswith('.mp3'), voicemail_tracks))
+      # Randomly select one of the tracks
+      voicemail_track = random.choice(voicemail_tracks)
+      # Play the track
+      output_streams = self.get_new_output_stream()
+      pool.submit(self.play_audio, voicemail_track, output_streams)
+      # Wait 3 seconds
+      print("Playing next voicemail in 3 seconds...")
+      time.sleep(2.5)
+
+
   def run(self):
     while True:
       relationship_pair = random.choice(constants.VOICEMAIL_PAIRS)
       voicemail_text = self.generate_voicemail(relationship_pair[0], relationship_pair[1])
+
+      import pdb;pdb.set_trace()
+      if SKIP_AUDIO_GENERATION:
+        continue
       
       # Generate audio, save, and play
       audio = self.call_elevenlabs_api(voicemail_text, self.voices, relationship_pair[0])
@@ -53,13 +94,7 @@ class SublimeSpeaker:
 
       # preamble_audio = self.generate_intro()
       # pool.submit(self.play_audio, preamble_audio)
-
-      if SPEAKER_ENVIRONMENT == 'LAPTOP':
-        stream = self.create_running_output_stream(1)
-        pool.submit(self.play_audio, filename, [stream])
-      elif SPEAKER_ENVIRONMENT == 'SCULPTURE':
-        output_streams = self.get_available_output_streams()
-        self.play_audio(filename, output_streams)
+      pool.submit(self.play_audio, filename, self.output_streams)
 
       # Sleep 😴
       n = 1/30
@@ -73,9 +108,13 @@ class SublimeSpeaker:
     :param relationship_pair_b: the voicemail recipient
     :return: a string containing the final voicemail text
     """
-    voicemail_prompt = "Generate a random voicemail a {} would leave for a {}. Give both characters a name:".format(
+    voicemail_prompt = """
+      Generate a script for a random voicemail a {} would leave for a {}.
+      Be sure to give both characters a name. Give the generated output in {}.
+      Respond just the content of the voicemai without any header text:""".format(
       relationship_pair_a,
-      relationship_pair_b
+      relationship_pair_b,
+      random.choice(LANGUAGES)
       )
     
     print("Prompt to generate:")
@@ -97,7 +136,7 @@ class SublimeSpeaker:
     response = openai.Completion.create(
       engine="text-davinci-003",
       prompt=prompt,
-      max_tokens=240,
+      max_tokens=480,
       temperature=0.9,
     )
     return response.choices[0].text
@@ -110,7 +149,6 @@ class SublimeSpeaker:
     :param voices: a list of possible voices to use for the response
     :return response: the audio data returned from the API
     """
-    import pdb;pdb.set_trace()
     print("Calling ElevenLabs API with speaker: {}".format(relationship_pair_a))
 
     voice_list = voices.voices
@@ -195,17 +233,20 @@ class SublimeSpeaker:
 
 
   def play_audio(self, filename, streams):
-    print("Playing audio...")
     sound = AudioSegment.from_mp3('audio_recordings/{}'.format(filename))
     sound.export('audio_recordings/{}.wav'.format(filename.split('.')[0]), format="wav")
     ad, sr = sf.read('audio_recordings/{}.wav'.format(filename.split('.')[0]), always_2d=True)
-    self.play_sound_on_speaker(0, streams, ad)
+    speaker_index = random.randint(0, len(streams)-1)
+    print("Playing {} on Speaker Index:{}...".format(filename, speaker_index))
+    self.play_sound_on_speaker(speaker_index, streams, ad)
 
 
   def play_sound_on_speaker(self, index, streams, audio):
     temp = audio
     if audio.shape[1] == 1:
       temp = np.insert(audio, 1, 0, axis=1)
+      if (random.random() > 0.5):
+        temp = np.flip(temp, axis=1)
       temp = temp.astype(DATA_TYPE)
     try:
       streams[index].write(temp)
@@ -216,4 +257,7 @@ class SublimeSpeaker:
 
 if __name__ == '__main__':
   my_program = SublimeSpeaker()
-  my_program.run()
+  if SIMULATE_MODE:
+    my_program.simulate()
+  else:
+    my_program.run()

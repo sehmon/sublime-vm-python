@@ -153,5 +153,15 @@ ELEVEN_LABS_WOMEN_NAMES = [
     'grandmother-1',
 ]
 
-
 DATA_TYPE="float32"
+
+GENERATION_LANGUAGES = [
+    "English",
+    "Spanish",
+    "French",
+    "Hindi",
+    "Italian",
+    "German",
+    "Polish",
+    "Portuguese",
+]
